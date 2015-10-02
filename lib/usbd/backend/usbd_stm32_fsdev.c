@@ -137,19 +137,51 @@ void stm32_fsdev_ep_setup(usbd_device *usbd_dev, uint8_t addr,
 			max_size += 1;
 		}
 
-		USB_SET_EP_TX_ADDR(addr, private_data->pm_used);
-		USB_CLR_EP_TX_DTOG(addr);
-		USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_NAK);
-		private_data->pm_used += max_size;
+		if (type == USB_ENDPOINT_ATTR_ISOCHRONOUS) {
+			//USB_ADDRn_TX_0 = USB_ADDRn_TX
+			USB_SET_EP_TX_ADDR(addr, private_data->pm_used);
+			private_data->pm_used += max_size;
+			USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_DISABLED);
+			USB_CLR_EP_TX_DTOG(addr);
+			USB_SET_EP_TX_COUNT(addr, max_size);
+
+			//USB_ADDRn_TX_1 = USB_ADDRn_RX
+			USB_SET_EP_RX_ADDR(addr, private_data->pm_used);
+			private_data->pm_used += max_size;
+			USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_DISABLED);
+			USB_CLR_EP_RX_DTOG(addr);
+			USB_SET_EP_RX_COUNT(addr, max_size);
+		} else {
+			USB_SET_EP_TX_ADDR(addr, private_data->pm_used);
+			USB_CLR_EP_TX_DTOG(addr);
+			USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_NAK);
+			private_data->pm_used += max_size;
+		}
 	}
 
 	if (!dir) {
 		uint16_t count_reg = stm32_fsdev_calc_ep_rx_bufsize(&max_size);
-		USB_SET_EP_RX_ADDR(addr, private_data->pm_used);
-		USB_SET_EP_RX_COUNT(addr, count_reg);
-		USB_CLR_EP_RX_DTOG(addr);
-		USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
-		private_data->pm_used += max_size;
+		if (type == USB_ENDPOINT_ATTR_ISOCHRONOUS) {
+			//USB_ADDRn_RX_0 = USB_ADDRn_TX
+			USB_SET_EP_TX_ADDR(addr, private_data->pm_used);
+			private_data->pm_used += max_size;
+			USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_DISABLED);
+			USB_CLR_EP_TX_DTOG(addr);
+			USB_SET_EP_TX_COUNT(addr, count_reg);
+
+			//USB_ADDRn_RX_1 = USB_ADDRn_RX
+			USB_SET_EP_RX_ADDR(addr, private_data->pm_used);
+			private_data->pm_used += max_size;
+			USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
+			USB_CLR_EP_RX_DTOG(addr);
+			USB_SET_EP_RX_COUNT(addr, count_reg);
+		} else {
+			USB_SET_EP_RX_ADDR(addr, private_data->pm_used);
+			USB_SET_EP_RX_COUNT(addr, count_reg);
+			USB_CLR_EP_RX_DTOG(addr);
+			USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
+			private_data->pm_used += max_size;
+		}
 	}
 }
 
@@ -178,6 +210,23 @@ void stm32_fsdev_set_ep_size(usbd_device *usbd_dev, uint8_t addr,
 
 	uint8_t dir = addr & 0x80;
 	addr &= 0x7f;
+
+	if ((USB_EP(addr) & USB_EP_TYPE) == USB_EP_TYPE_ISO) {
+		uint16_t count_reg;
+		if (!dir) {
+			count_reg = stm32_fsdev_calc_ep_rx_bufsize(&max_size);
+		} else {
+			if (max_size & 1) {
+				max_size += 1;
+			}
+			count_reg = max_size;
+		}
+
+		USB_SET_EP_RX_ADDR(addr, USB_GET_EP_TX_ADDR(addr) + max_size);
+		USB_SET_EP_TX_COUNT(addr, count_reg);
+		USB_SET_EP_RX_COUNT(addr, count_reg);
+		return;
+	}
 
 	/* note: for TX, their is no method to store max_size.
 	 *   it is assumed that application will never send buffer
