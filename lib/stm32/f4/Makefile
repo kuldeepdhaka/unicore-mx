@@ -58,7 +58,7 @@ OBJS		+= ltdc_common_f47.o
 OBJS		+= usbh_dev_enum.o usbh_device.o usbh_host.o
 OBJS		+= usbh_hub.o usbh_transfer.o usbh_urb.o
 OBJS		+= usbh_dwc_otg.o usbh_stm32_otg_fs.o usbh_stm32_otg_hs.o
-OBJS		+= usbh_hid.o
+OBJS		+= usbh_hid.o usbh_msc.o
 OBJS		+= usbh_ctrlreq.o
 
 VPATH += ../:../../cm3:../common
