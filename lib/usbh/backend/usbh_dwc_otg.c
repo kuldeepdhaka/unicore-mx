@@ -32,7 +32,7 @@
 #define REBASE(REG, ...)	REG(host->backend->base_address, ##__VA_ARGS__)
 
 /* as per specs, 10ms to 20ms */
-#define RESET_HOLD_DURATION (MS2US(10))  /* unit: microseconds (us) */
+#define RESET_HOLD_DURATION (MS2US(50))  /* unit: microseconds (us) */
 
 #define PREFIX_FRAME_NUM LOGF("[FRAME %"PRIu16"]: ",					\
 	(uint16_t)REBASE(DWC_OTG_HFNUM) & DWC_OTG_HFNUM_FRNUM_MASK);			\
